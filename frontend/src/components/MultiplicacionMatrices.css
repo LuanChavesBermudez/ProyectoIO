@@ -1,0 +1,220 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap');
+
+.mm-wrap {
+  font-family: 'Syne', sans-serif;
+  background: #0a0a0f;
+  min-height: 100vh;
+  padding: 2.5rem 1.5rem;
+  color: #e8e6ff;
+}
+
+.mm-title {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin: 0 0 0.25rem;
+  background: linear-gradient(90deg, #a78bfa, #60a5fa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.mm-subtitle {
+  font-size: 0.8rem;
+  font-family: 'Space Mono', monospace;
+  color: #6b7280;
+  margin: 0 0 2rem;
+  letter-spacing: 0.05em;
+}
+
+/* Box */
+.mm-format-box {
+  border: 1px solid #1e1b4b;
+  background: #0f0e1a;
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.mm-format-title {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: #7c3aed;
+  text-transform: uppercase;
+  margin: 0 0 0.5rem;
+}
+
+.mm-format-text {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.78rem;
+  color: #9ca3af;
+  line-height: 1.7;
+  margin: 0;
+}
+
+.mm-format-text code {
+  color: #a78bfa;
+  background: #1e1b4b;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+}
+
+/* Input */
+.mm-input-row {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.mm-input {
+  flex: 1;
+  background: #0f0e1a;
+  border: 1px solid #2d2b55;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.9rem;
+  color: #e8e6ff;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.mm-input:focus       { border-color: #7c3aed; }
+.mm-input::placeholder { color: #374151; }
+
+.mm-btn {
+  background: #7c3aed;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  white-space: nowrap;
+}
+
+.mm-btn:hover    { background: #6d28d9; }
+.mm-btn:active   { transform: scale(0.97); }
+.mm-btn:disabled { background: #374151; cursor: not-allowed; }
+
+/* Error */
+.mm-error {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.78rem;
+  color: #f87171;
+  background: #1f0d0d;
+  border: 1px solid #7f1d1d;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Resultados */
+.mm-results {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.mm-cadena {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.82rem;
+  color: #9ca3af;
+  margin: 0 0 1.5rem;
+}
+
+.mm-cadena span { color: #a78bfa; }
+
+/* Card */
+.mm-card {
+  background: #0f0e1a;
+  border: 1px solid #1e1b4b;
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.mm-card-title {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: #7c3aed;
+  text-transform: uppercase;
+  margin: 0 0 0.75rem;
+}
+
+/* Resultado Optimo */
+.mm-optimal {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.mm-orden {
+  font-family: 'Space Mono', monospace;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #a78bfa;
+  letter-spacing: -0.02em;
+}
+
+.mm-costo-badge {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.8rem;
+  color: #60a5fa;
+  background: #0c1a2e;
+  border: 1px solid #1e3a5f;
+  border-radius: 6px;
+  padding: 4px 12px;
+}
+
+/* Matriz */
+.mm-table-container { overflow-x: auto; }
+
+.mm-matrix {
+  border-collapse: collapse;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.78rem;
+  width: 100%;
+}
+
+.mm-matrix td {
+  padding: 6px 14px;
+  text-align: right;
+  border: 1px solid #1e1b4b;
+  color: #c4b5fd;
+  min-width: 52px;
+}
+
+.mm-matrix td.zero      { color: #2d2b55; }
+.mm-matrix td.highlight { color: #60a5fa; background: #0c1a2e; }
+
+.mm-matrix th {
+  padding: 6px 14px;
+  text-align: right;
+  border: 1px solid #1e1b4b;
+  color: #4b4888;
+  font-family: 'Space Mono', monospace;
+  font-weight: 400;
+  font-size: 0.7rem;
+  min-width: 52px;
+  background: #0a0914;
+}
+
+.mm-matrix th.corner { background: #0a0914; }
+
+/*  Arbol */
+.mm-tree {
+  overflow-x: auto;
+  padding: 0.5rem 0;
+}
