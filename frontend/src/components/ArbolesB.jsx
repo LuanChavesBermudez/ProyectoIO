@@ -13,7 +13,7 @@ function ArbolesB() {
 
     if (listaLlaves.length !== listaPesos.length) {
       setAdvertencia("La cantidad de llaves y pesos debe coincidir.");
-      return;
+      return null;
     }
 
     let pesoTotal = 0;
@@ -24,7 +24,7 @@ function ArbolesB() {
 
       if (isNaN(pesoNum) || pesoNum <= 0) {
         setAdvertencia("Los pesos deben ser números mayores a 0.");
-        return;
+        return null;
       }
 
       pesoTotal += pesoNum;
@@ -45,7 +45,7 @@ function ArbolesB() {
       pares[i].frecuencia = pares[i].peso / pesoTotal;
     }
     return pares;
-  }
+  };
 
   const crearMatriz = (len) => {
     const matriz = [];
@@ -55,9 +55,10 @@ function ArbolesB() {
       for (let j = 0; j < len; j++) {
         fila.push(0);
       }
-      matriz.push(row);
+      matriz.push(fila);
     }
-  }
+    return matriz;
+  };
 
   const sumaFrecuencias = (pares, inicio, fin) => {
     let suma = 0;
@@ -65,7 +66,7 @@ function ArbolesB() {
       suma += pares[i].frecuencia;
     }
     return suma;
-  }
+  };
 
 
   const abbOptimos = (pares) => {
@@ -73,18 +74,18 @@ function ArbolesB() {
 
     const A = crearMatriz(len);                   //Matriz A es la que guarda los costos
     const R = crearMatriz(len);                   //Matriz R guarda los K ganadores
-    const memoFrecuencias = crearMatriz[len];     //Memoización de sumas de frecuencias pi hasta pj
+    const memoFrecuencias = crearMatriz(len);     //Memoización de sumas de frecuencias pi hasta pj
 
     for (let j = 0; j < len; j++) {               //Calcula de columna en columna
       for (let i = j; i >= 0; i--) {              //i = j equivale a A[i][i], la primer celda que contempla costos de llaves
         let costoMin = Infinity;
 
-        for (let k = i; k <= j; k++) {                          //Calcula todos los k desde k = i a k = j
-          let formulaIzq = (k - 1 < 0) ? 0 : A[i][k - 1];       //Validacion para indice columna fuera de la matriz
-          let formulaDer = (k + 1 >= len) ? 0 : A[k + 1][j];   //Validacion para indice fila fuera de la matriz
+        for (let k = i; k <= j; k++) {                            //Calcula todos los k desde k = i a k = j
+          const formulaIzq = (k - 1 < 0) ? 0 : A[i][k - 1];       //Validacion para indice columna fuera de la matriz
+          const formulaDer = (k + 1 >= len) ? 0 : A[k + 1][j];    //Validacion para indice fila fuera de la matriz
 
-          let totalFrecuencias = memoFrecuencias[i][j];         //Busca suma de frecuencias precalculada
-          if (totalFrecuencias == 0) {                          //Si no se ha calculado, lo calcula y lo guarda
+          let totalFrecuencias = memoFrecuencias[i][j];           //Busca suma de frecuencias precalculada
+          if (totalFrecuencias == 0) {                            //Si no se ha calculado, lo calcula y lo guarda
             totalFrecuencias = sumaFrecuencias(pares, i, j);
             memoFrecuencias[i][j] = totalFrecuencias;
           }
@@ -100,15 +101,51 @@ function ArbolesB() {
       }
     }
     return [A, R];
-  }
+  };
+
+  class Nodo {
+    llave = null;
+    hijoIzq = null;
+    hijoDer = null;
+
+    constructor(llave) {
+      this.llave = llave;
+    }
+  };
+
+  const reconstruirArbol = (R, pares, indiceInicio, indiceFin) => {
+    if (indiceInicio > indiceFin) {     // si i > j, ya llegó a una hoja
+      return null;
+    }
+
+    const indiceRaiz = R[indiceInicio][indiceFin] - 1;        //Saca el k ganador de la tabla R, resta 1 para acomodarlo a la lista de pares
+    const raiz = new Nodo(pares[indiceRaiz].llave);
+
+    raiz.hijoIzq = reconstruirArbol(R, pares, indiceInicio, indiceRaiz - 1);  //subarbol de i hasta indiceRaiz - 1
+    raiz.hijoDer = reconstruirArbol(R, pares, indiceRaiz + 1, indiceFin);     //subarbol desde indiceRaiz + 1 hasta j
+
+    return raiz;
+  };
 
   const main = () => {
-    const [pares, pesoTotal] = validarEntrada();
+    const entradas = validarEntrada();
+    if (entradas === null) {
+      return
+    }
+    const [pares, pesoTotal] = entradas;
     asignarFrecuencias(pares, pesoTotal);
 
     const paresOrdenados = [...pares].sort((a, b) => a.llave.localeCompare(b.llave));
     const [A, R] = abbOptimos(paresOrdenados);
-  }
+    const raiz = reconstruirArbol(R, paresOrdenados, 0, paresOrdenados.length - 1);
+
+    const resultados = {
+      TablaA: A,
+      TablaR: R,
+      Arbol: raiz
+    }
+    setResultado(resultados)
+  };
 
   return (
     <div>
