@@ -113,15 +113,16 @@ def SeriesDeportivas(maxJuegos, probabilidadCasaA, probabilidadVisitaA, formato)
         tabla[0][i+1] = 1
 
     for fila in range(victorias):
+        # Calcula juego actual en base a victorias restantes para A
+        juegoActual = (victorias*2 - (fila+1))
         for columna in range(victorias):
-            # Calcula juego actual en base a victorias restantes y trunca indice en un rango valido
-            juegoActual = formato[(victorias*2 - fila - columna)%maxJuegos]
-            p = probabilidades[juegoActual][0]
-            q = probabilidades[juegoActual][1]
+            juegoActual -= 1 # Tomar en cuenta victorias restantes para B
+            esLocalia = formato[juegoActual%maxJuegos] # Modulo mantiene indice en rango de maxJuegos (si este es par)
+            p = probabilidades[esLocalia][0]
+            q = probabilidades[esLocalia][1]
             tabla[fila+1][columna+1] = round(
                 p * tabla[fila][columna+1] + q * tabla[fila+1][columna],4
             )
-            juegoActual -= 1
         maxJuegos -= 1
     tabla = tabla.tolist()
     tabla[0][0] = "-" # Caso imposible: Ambos equipos ganan la serie
