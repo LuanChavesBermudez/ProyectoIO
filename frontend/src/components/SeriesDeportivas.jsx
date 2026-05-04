@@ -74,6 +74,7 @@ function SeriesDeportivas() {
       <button
         className={"mm-btn " + (formato[index] ? "sd-btnA" : "sd-btnB")}
         id={index}
+        key={index}
         onClick={handleToggle}
         value={formato[index]}
       >
