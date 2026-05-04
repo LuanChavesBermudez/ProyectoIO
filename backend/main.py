@@ -23,6 +23,12 @@ class InflacionRequest(BaseModel):
 class MatrizRequest(BaseModel):
     cadena: str
 
+class SeriesRequest(BaseModel):
+    probCasa: float
+    probVisita: float
+    maxJuegos: int
+    formato: list
+
 @app.get("/")
 def root():
     return {"mensaje": "Backend funcionando!"}
@@ -91,4 +97,39 @@ def multiplicacion_matrices(data: MatrizRequest):
         "orden_optimo": orden,
         "tabla_M": M.tolist(),
         "tabla_P": P.tolist()
+    }
+
+# Crea la matriz de probabilidades de que gane el equipo A en una serie deportiva
+# E:    formato - Array booleano en el que verdadero indica si el juego i+1-ésimo es en casa del equipo A
+# S:    Array bidimensional que indica las probabilidades de que gane el equipo A en cada subcaso
+def SeriesDeportivas(maxJuegos, probabilidadCasaA, probabilidadVisitaA, formato):
+    probabilidades = [
+        (probabilidadVisitaA, 1 - probabilidadVisitaA), # False indexa (P_r, Q_h)
+        (probabilidadCasaA, 1 - probabilidadCasaA)      # True indexa  (P_h, Q_r)
+    ]
+    victorias = int(np.ceil((maxJuegos+1)/2))
+    tabla = np.zeros((victorias+1, victorias+1))
+    for i in range(victorias): # Casos triviales: A gano el partido 
+        tabla[0][i+1] = 1
+
+    for fila in range(victorias):
+        for columna in range(victorias):
+            # Calcula juego actual en base a victorias restantes y trunca indice en un rango valido
+            juegoActual = formato[(victorias*2 - fila - columna)%maxJuegos]
+            p = probabilidades[juegoActual][0]
+            q = probabilidades[juegoActual][1]
+            tabla[fila+1][columna+1] = round(
+                p * tabla[fila][columna+1] + q * tabla[fila+1][columna],4
+            )
+            juegoActual -= 1
+        maxJuegos -= 1
+    tabla = tabla.tolist()
+    tabla[0][0] = "-" # Caso imposible: Ambos equipos ganan la serie
+    return tabla
+
+@app.post("/series-deportivas")
+def series_deportivas(data: SeriesRequest):
+    tabla = SeriesDeportivas(data.maxJuegos, data.probCasa, data.probVisita, data.formato)
+    return {
+        "tabla": tabla
     }

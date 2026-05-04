@@ -83,6 +83,26 @@
 .mm-input:focus       { border-color: #7c3aed; }
 .mm-input::placeholder { color: #374151; }
 
+.sd-input {
+  background: #0f0e1a;
+
+}
+
+.mm-input::file-selector-button {
+  background: #7c3aed;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  white-space: nowrap;
+  margin-right: 1.5rem;
+}
+
 .mm-btn {
   background: #7c3aed;
   color: #fff;
@@ -97,9 +117,41 @@
   white-space: nowrap;
 }
 
+.mm-btn input[type="file"]::file-selector-button { background: inherit;}
+
 .mm-btn:hover    { background: #6d28d9; }
 .mm-btn:active   { transform: scale(0.97); }
 .mm-btn:disabled { background: #374151; cursor: not-allowed; }
+
+.sd-btnA {
+  background: #a83535;
+}
+
+.sd-btnA:hover { background: #661f1f;}
+
+.sd-btnB{
+  background: #004e81;
+}
+
+.sd-btnB:hover { background: #00375c;}
+
+.diagonal-cell {
+  position: relative;
+  height:2rem;
+  width: 2rem;
+}
+
+.top-label {
+  position: absolute;
+  top: 3px;
+  right: 12px;
+}
+
+.bottom-label {
+  position: absolute;
+  bottom: 3px;
+  left: 12px;
+}
 
 /* Error */
 .mm-error {
