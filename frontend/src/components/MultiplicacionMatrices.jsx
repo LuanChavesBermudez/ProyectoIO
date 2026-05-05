@@ -167,6 +167,7 @@ const cargarArchivo = () => {
 }
 
 const handleFileChange = (e) => {
+  setError(null)          
   const file = e.target.files[0]
   if (!file) return
 
