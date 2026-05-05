@@ -21,8 +21,8 @@ function SeriesTable({data, complemento}) {
         <thead>
           <tr>
             <th className="diagonal-cell">
-              <span className="top-label">A</span>
-              <span className="bottom-label">B</span>
+              <span className="top-label">B</span>
+              <span className="bottom-label">A</span>
             </th>
             {Array.from({length: size}).map(
               (header, i) => <th key={i}> {i} </th>

@@ -24,7 +24,10 @@ function Menu() {
                 Árboles B
             </Link>
 
-            <Link to="/series-deportivas" data-tooltip-id="menuTooltip" data-tooltip-content={``}>
+            <Link to="/series-deportivas" data-tooltip-id="menuTooltip" data-tooltip-content={
+                `Halla la probabilidad de que un equipo A gane una serie deportiva tomando en
+                cuenta la localía. La probabilidad de que gane equipo B se halla por complemento`
+            }>
                 Series Deportivas
             </Link>
 
