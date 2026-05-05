@@ -1,5 +1,5 @@
 import { useState } from "react";
-import "./MultiplicacionMatrices.css"
+import "./Estilos.css";
 
 function ArbolesB() {
   const [llaves, setLlaves] = useState("");

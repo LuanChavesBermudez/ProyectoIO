@@ -1,5 +1,5 @@
 import { useState } from "react"
-import "./MultiplicacionMatrices.css"
+import "./Estilos.css"
 import { buildTree, assignPositions, collectAll, getTreeDepth } from "./treeUtils"
 
 

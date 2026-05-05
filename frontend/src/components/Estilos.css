@@ -270,3 +270,14 @@
   overflow-x: auto;
   padding: 0.5rem 0;
 }
+
+.menuTooltip {
+  width: 300px;
+  max-width: 300px;
+  white-space: normal;
+  word-wrap: break-word;
+  font-family: 'Space Mono', monospace;
+  font-size: 14px !important;
+  border-radius: 8px;
+  padding: 8px;
+}

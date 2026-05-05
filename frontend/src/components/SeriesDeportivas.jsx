@@ -1,5 +1,5 @@
 import { useState } from "react"
-import "./MultiplicacionMatrices.css"
+import "./Estilos.css"
 
 const MAX_PROBABILITY = 1
 const MIN_PROBABILITY = 0
