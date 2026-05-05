@@ -1,4 +1,4 @@
-import { useState } from "react"
+import React, { useState } from "react"
 import "./Estilos.css"
 import { buildTree, assignPositions, collectAll, getTreeDepth } from "./treeUtils"
 
@@ -141,6 +141,61 @@ function MultiplicacionMatrices() {
 
   const generarCadena = () => dims.join("*")
 
+  const guardarArchivo = () => {
+  const data = {
+    numMatrices,
+    dims: dims.map(Number)
+  }
+
+  const blob = new Blob([JSON.stringify(data, null, 2)], {
+    type: "application/json"
+  })
+
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = "matrices.json"
+  a.click()
+
+  URL.revokeObjectURL(url)
+}
+
+const fileInputRef = React.useRef(null)
+
+const cargarArchivo = () => {
+  fileInputRef.current.click()
+}
+
+const handleFileChange = (e) => {
+  const file = e.target.files[0]
+  if (!file) return
+
+  const reader = new FileReader()
+  reader.onload = (event) => {
+    try {
+      const data = JSON.parse(event.target.result)
+
+      if (!data.dims || !Array.isArray(data.dims)) {
+        throw new Error("Formato inválido")
+      }
+
+      const n = data.dims.length - 1
+
+      if (n < 2 || n > 10) {
+        throw new Error("Cantidad de matrices inválida")
+      }
+
+      setNumMatrices(n)
+      setDims(data.dims.map(String))
+      setResultado(null)
+
+    } catch (err) {
+      setError("Archivo inválido")
+    }
+  }
+
+  reader.readAsText(file)
+}
   return (
     <div className="mm-wrap">
       <h1 className="mm-title">Multiplicación de Matrices</h1>
@@ -152,7 +207,29 @@ function MultiplicacionMatrices() {
           Seleccione la cantidad de matrices a multiplicar e inserte sus dimensiones, no pueden valer 0.
         </p>
       </div>
+      <div className="mm-input-row" style={{ justifyContent: "center" }}>
+        <button
+          className="mm-btn"
+          onClick={guardarArchivo}
+          disabled={!isValid || loading}
+        >
+          Guardar Archivo
+        </button>
 
+        <button
+          className="mm-btn"
+          onClick={cargarArchivo}
+        >
+          Cargar Archivo
+        </button>
+      </div>
+      <input
+        type="file"
+        accept=".json"
+        ref={fileInputRef}
+        style={{ display: "none" }}
+        onChange={handleFileChange}
+      />
       <div className="mm-input-row">
 
         <select
