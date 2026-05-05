@@ -16,6 +16,8 @@
   background: linear-gradient(90deg, #a78bfa, #60a5fa);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  line-height: 1.2;
+  padding-top: 0.2em; 
 }
 
 .mm-subtitle {
@@ -280,4 +282,19 @@
   font-size: 14px !important;
   border-radius: 8px;
   padding: 8px;
+}
+
+.mm-select {
+  background: #0f0e1a;
+  border: 1px solid #2d2b55;
+  border-radius: 8px;
+  padding: 0.6rem;
+  color: #e8e6ff;
+  font-family: 'Space Mono', monospace;
+}
+
+.mm-dims {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }

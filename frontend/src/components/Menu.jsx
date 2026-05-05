@@ -31,7 +31,9 @@ function Menu() {
                 Series Deportivas
             </Link>
 
-            <Link to="/multiplicacion-matrices" data-tooltip-id="menuTooltip" data-tooltip-content={``}>
+            <Link to="/multiplicacion-matrices" data-tooltip-id="menuTooltip" data-tooltip-content={
+                `Encuentra el orden de multiplicación matricial que requiere la menor cantidad
+                de operaciones posibles.`}>
                 Multiplicación de Matrices
             </Link>
         </nav>

@@ -55,11 +55,10 @@ def predecir_inflacion(data:InflacionRequest):
 ##Recorre la matriz M en diagonal y realiza los cálculos necesarios para determinar el menor costo
 def MultiplicacionMatrices(cadena):
     cadena = cadena.replace(" ", "")
-    numeros = re.sub(r'(\d+)\*\1', r'\1', cadena) 
-    d = [int(n) for n in re.findall(r'\d+', numeros)]#obtiene las dimensiones
+    d = [int(n) for n in cadena.split("*")]
     n = len(d) - 1 #longitud de la matriz
-    M = np.zeros((n, n))
-    P = np.zeros((n, n))
+    M = np.zeros((n, n)) #matriz de costo optimo
+    P = np.zeros((n, n)) #matriz posiciones
     for i in range(1, n):
         for j in range(i, n):
             a = j - i #valor de i
