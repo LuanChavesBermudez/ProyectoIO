@@ -13,7 +13,10 @@ function Menu() {
                 Inicio
             </Link>
 
-            <Link to="/reemplazo-equipos" data-tooltip-id="menuTooltip" data-tooltip-content={``}>
+            <Link to="/reemplazo-equipos" data-tooltip-id="menuTooltip" data-tooltip-content={
+                `Algoritmo que determina el plan óptimo de reemplazo de una bicicleta\n
+                minimizando el costo total de mantenimiento y compra a lo largo del tiempo`
+            }>
                 Reemplazo de Equipos
             </Link>
 
