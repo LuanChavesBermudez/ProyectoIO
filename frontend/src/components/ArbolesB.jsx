@@ -2,6 +2,7 @@ import { useState } from "react";
 import "./Estilos.css";
 
 function ArbolesB() {
+  // Variables de entrada / salida
   const [llaves, setLlaves] = useState("");
   const [pesos, setPesos] = useState("");
   const [advertencia, setAdvertencia] = useState("");
@@ -9,32 +10,41 @@ function ArbolesB() {
   const [dirty, setDirty] = useState(false);
 
   const validarEntrada = () => {
+    // Convierte los strings de entrada a listas
     const listaLlaves = llaves.split(",");
     const listaPesos = pesos.split(",");
 
+    // Valida que coincidan las cantidades
     if (listaLlaves.length !== listaPesos.length) {
       setAdvertencia("La cantidad de llaves y pesos debe coincidir.");
       return null;
     }
 
+    // Peso total para sacar frecuencias, lista de pares para asociar llave:frecuencia
     let pesoTotal = 0;
     const pares = [];
 
+    // Para cada llave ingresada
     for (let i = 0; i < listaLlaves.length; i++) {
+      // Valida que no haya valores vacíos
       if (listaLlaves[i] === "" || listaPesos[i] === "") {
         setAdvertencia("Debe ingresar datos validos en los campos de llaves y pesos.")
         return null;
       }
 
+      // Convierte el peso ingresado a un valor real
       const pesoNum = Number(listaPesos[i].trim());
 
+      // Valida que sea un numero valido mayor a 0
       if (isNaN(pesoNum) || pesoNum <= 0) {
         setAdvertencia("Los pesos deben ser números mayores a 0.");
         return null;
       }
 
+      // Suma su peso al peso total
       pesoTotal += pesoNum;
 
+      // Crea par ordenado llave:peso
       pares.push({
         llave: listaLlaves[i].trim(),
         peso: pesoNum
@@ -43,16 +53,23 @@ function ArbolesB() {
     }
     setAdvertencia("");
 
-    return [pares, pesoTotal];
+    return {
+      pares: pares,
+      pesoTotal: pesoTotal
+    };
   };
 
+  // Asigna frecuencia a los pares
   const asignarFrecuencias = (pares, pesoTotal) => {
+    // Para cada par ordenado
     for (let i = 0; i < pares.length; i++) {
+      // frecuencia es un ratio entre su peso y el peso total de las llaves
       pares[i].frecuencia = pares[i].peso / pesoTotal;
     }
     return pares;
   };
 
+  // Crea matriz de tamaño n dinamicamente
   const crearMatriz = (len) => {
     const matriz = [];
     for (let i = 0; i < len; i++) {
@@ -66,6 +83,7 @@ function ArbolesB() {
     return matriz;
   };
 
+  //A[i][k-1] + A[k+1][j] + (pi + ... + pj) <-- suma de las frecuencias en la formula
   const sumaFrecuencias = (pares, inicio, fin) => {
     let suma = 0;
     for (let i = inicio; i <= fin; i++) {
@@ -106,7 +124,10 @@ function ArbolesB() {
         A[i][j] = costoMin;
       }
     }
-    return [A, R];
+    return {
+      TablaA: A,
+      TablaR: R
+    };
   };
 
   class Nodo {
@@ -134,73 +155,99 @@ function ArbolesB() {
   };
 
   const guardarArchivo = () => {
+    // Obtiene los strings de input
     const datos = {
       llaves: llaves,
       pesos: pesos
     };
 
-    const json = JSON.stringify(datos, null, 2);
-    const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const archivo = document.createElement("a");
+    const json = JSON.stringify(datos, null, 2);                  // Lo convierte a documento de texto con formato json
+    const blob = new Blob([json], { type: "application/json" });  // Le genera un blob
+    const url = URL.createObjectURL(blob);                        // Le asigna un URL para accederlo
+    const archivo = document.createElement("a");                  // Crea un html para poder interactuar con el blob
 
-    archivo.href = url;
-    archivo.download = "configABB.json";
-    archivo.click();
+    archivo.href = url;                                           // Apunta el html al blob
+    archivo.download = "configABB.json";                          // Indica que el componente html es para descargar y le asigna nombre
+    archivo.click();                                              // Descarga
 
-    URL.revokeObjectURL(url);
+    URL.revokeObjectURL(url);                                     // Libera el url
   };
 
   const cargarArchivo = (e) => {
+    // Abre ventana de upload
     const upload = document.createElement("input");
     upload.type = "file";
     upload.accept = "application/json";
 
+    // Cuando se cierra la ventana
     upload.onchange = (e) => {
       const archivo = e.target.files[0];
 
+      // Si no se elegio archivo, retorna
       if (!archivo) {
         return;
       }
 
+      // Abre un lector de archivos
       const reader = new FileReader();
+
+      // Define como se van a procesar los datos
       reader.onload = (e) => {
+        // Lo carga como JSON
         const datos = JSON.parse(e.target.result);
+
+        // Si no tiene formato correcto, retorna
         if (!("llaves" in datos) || !("pesos") in datos) {
           setAdvertencia("El archivo seleccionado es invalido.");
           return;
         }
 
+        // Carga los strings a los campos de input
         setLlaves(datos.llaves);
         setPesos(datos.pesos);
       };
+      // Procesa los datos
       reader.readAsText(archivo);
     };
     upload.click();
-    setDirty(true)
+    setDirty(true);
+    setResultado(null);
   };
 
   const main = () => {
+    // valida que las entradas sean validas
     const entradas = validarEntrada();
     if (entradas === null) {
-      return
+      return;
     }
-    const [pares, pesoTotal] = entradas;
+
+    // extrae los pares ordenados y el peso total de las llaves
+    const pares = entradas.pares;
+    const pesoTotal = entradas.pesoTotal;
+
+    // modifica los pares, les añade su frecuencia con respecto al peso total
     asignarFrecuencias(pares, pesoTotal);
 
+    // ordena los pares lexicograficamente
     const paresOrdenados = [...pares].sort((a, b) => a.llave.localeCompare(b.llave));
-    const [A, R] = abbOptimos(paresOrdenados);
+
+    // Calcula tablas A y R
+    const tablas = abbOptimos(paresOrdenados);
+    const A = tablas.TablaA;
+    const R = tablas.TablaR;
+
+    // Reconstruye el arbol
     const raiz = reconstruirArbol(R, paresOrdenados, 0, paresOrdenados.length - 1);
 
     const resultados = {
       TablaA: A,
       TablaR: R,
       Arbol: raiz
-    }
+    };
 
     setDirty(false);
     setResultado(resultados);
-    console.log(resultados.Arbol)
+    console.log(resultados.Arbol);
   };
 
   return (
