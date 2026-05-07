@@ -177,6 +177,7 @@ function ArbolesB() {
       reader.readAsText(archivo);
     };
     upload.click();
+    setDirty(true)
   };
 
   const main = () => {
@@ -199,6 +200,7 @@ function ArbolesB() {
 
     setDirty(false);
     setResultado(resultados);
+    console.log(resultados.Arbol)
   };
 
   return (
