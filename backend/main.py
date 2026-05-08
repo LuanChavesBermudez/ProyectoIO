@@ -100,31 +100,29 @@ def multiplicacion_matrices(data: MatrizRequest):
 
 # Crea la matriz de probabilidades de que gane el equipo A en una serie deportiva
 # E:    formato - Array booleano en el que verdadero indica si el juego i+1-ésimo es en casa del equipo A
-# S:    Array bidimensional que indica las probabilidades de que gane el equipo A en cada subcaso
+# S:    Array bidimensional que indica las probabilidades de que gane el equipo A en cada subcaso y localidad
+#       (-1: N/a, 0: Localia de B, 1: Localia de A)
 def SeriesDeportivas(maxJuegos, probabilidadCasaA, probabilidadVisitaA, formato):
     probabilidades = [
         (probabilidadVisitaA, 1 - probabilidadVisitaA), # False indexa (P_r, Q_h)
         (probabilidadCasaA, 1 - probabilidadCasaA)      # True indexa  (P_h, Q_r)
     ]
     victorias = int(np.ceil((maxJuegos+1)/2))
-    tabla = np.zeros((victorias+1, victorias+1))
-    for i in range(victorias): # Casos triviales: A gano el partido 
-        tabla[0][i+1] = 1
+    tabla = np.full((victorias+1, victorias+1), {"value":0, "style":-1}, dtype=object) # Crea matriz de 0s con dimensiones extra para casos triviales
+    for i in range(victorias):                   # Corrige 1ra fila para tener caso trivial: "A ya ganó la serie"
+        tabla[0][i+1] = {"value":1, "style":-1}
 
     for fila in range(victorias):
-        # Calcula juego actual en base a victorias restantes para A
-        juegoActual = (victorias*2 - (fila+1))
+        # Halla num de juego inicial en fila (numerado desde 0). Aunque se puede usar un contador si el total es
+        juegoActual = (victorias*2 - (fila+1)) # impar, es necesario para maxJuegos par (juego extra de desempate)
         for columna in range(victorias):
-            juegoActual -= 1 # Tomar en cuenta victorias restantes para B
+            juegoActual -= 1                           # Toma en cuenta victorias restantes de B para el numero de juego
             esLocalia = formato[juegoActual%maxJuegos] # Modulo mantiene indice en rango de maxJuegos (si este es par)
             p = probabilidades[esLocalia][0]
             q = probabilidades[esLocalia][1]
-            tabla[fila+1][columna+1] = round(
-                p * tabla[fila][columna+1] + q * tabla[fila+1][columna],4
-            )
-        maxJuegos -= 1
+            tabla[fila+1][columna+1] = {"value": p * tabla[fila][columna+1]["value"] + q * tabla[fila+1][columna]["value"], "style": int(esLocalia)}
     tabla = tabla.tolist()
-    tabla[0][0] = "-" # Caso imposible: Ambos equipos ganan la serie
+    tabla[0][0] = {"value":"-", "style":-1} # Caso imposible: Ambos equipos ganan la serie
     return tabla
 
 @app.post("/series-deportivas")

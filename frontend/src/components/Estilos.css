@@ -253,6 +253,10 @@
 .mm-matrix td.zero      { color: #2d2b55; }
 .mm-matrix td.highlight { color: #60a5fa; background: #0c1a2e; }
 
+.mm-matrix td.highlightSD { color: #fdb5fd; background: #2d0c2e; }
+.mm-matrix td.SD-A { color:#ff6161}
+.mm-matrix td.SD-B { color:#30acff}
+
 .mm-matrix th {
   padding: 6px 14px;
   text-align: right;

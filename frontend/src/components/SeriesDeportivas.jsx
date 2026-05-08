@@ -8,6 +8,7 @@ const MIN_GAME_NUM = 1
 const DEFAULT_HOME_GAME = 0.73
 const DEFAULT_ROAD_GAME = 0.46
 const DEFAULT_GAMES = 7
+const USE_BACKEND = false
 
 // Da formato a una tabla de probabilidades para desplegarla en HTML
 // E: data - Matriz de probabilidades de que gane el equipo A
@@ -36,8 +37,8 @@ function SeriesTable({data, complemento}) {
               {
                 row.map(
                   (col, j) =>
-                  <td key={j} className={i==j && i==size-1 ? "highlight":""}>
-                    {col === "-" ? "-" : (complemento ? 1-col : col).toFixed(4)}
+                  <td key={j} className={i==j && i==size-1 ? "highlightSD": (col.style == -1 ? "" : (col.style ? "SD-A":"SD-B"))}>
+                    {col.value === "-" ? "-" : (complemento ? 1-col.value : col.value).toFixed(4)}
                   </td>
                 )
               }
@@ -47,6 +48,36 @@ function SeriesTable({data, complemento}) {
       </table>
     </div>
   )
+}
+
+/* Crea la matriz de probabilidades de que gane el equipo A en una serie deportiva
+  E:    formato - Array booleano en el que verdadero indica si el juego i+1-ésimo es en casa del equipo A
+  S:    Array bidimensional que indica las probabilidades de que gane el equipo A en cada subcaso y localidad
+        (-1: N/a, 0: Localia de B, 1: Localia de A) */
+function CalcularSeries(maxJuegos, probCasa, probVisita, formato) {
+  const probabilidades = [
+      [probVisita, 1-probVisita], // False indexa (P_r, Q_h)
+      [probCasa, 1-probCasa]      // True indexa  (P_h, Q_r)
+    ]
+    const victorias = Math.ceil((maxJuegos+1)/2)
+    const tabla = Array.from({length:victorias+1}).map( // Crea matriz con dimensiones extra para casos triviales
+      (row, i) => Array(victorias+1).fill({value:(i==0 ? 1 : 0), style:-1}) // La primera fila es instanciada con 1s (caso A gano la serie)
+    )
+
+    for (let fila = 0; fila < victorias; fila++) {
+      // Halla num de juego inicial en fila (numerado desde 0). Aunque se puede usar un contador si el total es impar
+      let juegoActual = (victorias*2 - (fila+1)) // es necesario para maxJuegos par (por el juego extra de desempate)
+      for (let columna = 0; columna < victorias; columna++) {
+        juegoActual--                                          // Toma en cuenta victorias restantes de B para el numero de juego
+        let esLocalia = Number(formato[juegoActual%maxJuegos]) // Modulo mantiene indice en rango de maxJuegos (si este es par)
+        let p = probabilidades[esLocalia][0]
+        let q = probabilidades[esLocalia][1]
+        tabla[fila+1][columna+1] = {value:(p * tabla[fila][columna+1].value + q * tabla[fila+1][columna].value), style:esLocalia}
+      }
+    }
+    tabla[0][0] = {value:"-", style:-1} // Caso imposible: Ambos equipos ganan la serie
+    console.log(tabla)
+    return {"tabla": tabla}
 }
 
 // Crea un array de tamaño fijo con estados booleanos aleatorios
@@ -85,18 +116,16 @@ function SeriesDeportivas() {
 
   const botones = initBotones()
 
-  // Convierte entradas a formato JSON y procesa petición de cálculo al backend
-  const handleSubmit = async () => {
-    setError(null)
-    setResultado(null)
+  // Pasa parametros de entrada al backend y muestra el resultado de su respuesta
+  const submitToBackend = async () => {
     try {
       const res = await fetch("http://localhost:8000/series-deportivas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          probCasa: probCasa,
-          probVisita: probVisita,
-          maxJuegos: maxJuegos,
+          probCasa: Number(probCasa),
+          probVisita: Number(probVisita),
+          maxJuegos: Number(maxJuegos),
           formato: formato
         })
       })
@@ -110,13 +139,30 @@ function SeriesDeportivas() {
     }
   }
 
+  // Pasa parámetros de entrada a la versión del frontend de la función de SeriesDeportivas
+  const submitToFrontend = () => {
+    try {
+      setResultado(CalcularSeries(Number(maxJuegos), Number(probCasa), Number(probVisita), formato))
+    } catch (err) {
+      setError(err.message)
+      console.log(err)
+    }
+  }
+
+  // Convierte entradas a formato JSON y procesa petición de cálculo al backend
+  const handleSubmit = () => {
+    setError(null)
+    setResultado(null)
+    USE_BACKEND ? submitToBackend() : submitToFrontend()
+  }
+
   // Convierte entradas en archivo JSON e inicia descarga automáticamente
   const saveJSON = () => {
     const blob = new Blob([
       JSON.stringify({
-        probCasa: probCasa,
-        probVisita: probVisita,
-        maxJuegos: maxJuegos,
+        probCasa: Number(probCasa),
+        probVisita: Number(probVisita),
+        maxJuegos: Number(maxJuegos),
         formato: formato
       })
     ])
@@ -140,12 +186,17 @@ function SeriesDeportivas() {
       const reader = new FileReader()
       reader.onload = (event) => {
         const parsedData = JSON.parse(event.target.result)
-        setProbCasa(parsedData.probCasa)
-        setProbVisita(parsedData.probVisita)
-        setMaxJuegos(parsedData.maxJuegos)
-        setFormato(parsedData.formato)
-        setResultado(null)
-        setError(null)
+        if (("probCasa" in parsedData) && ("probVisita" in parsedData) && ("maxJuegos" in parsedData) && ("formato" in parsedData)) {
+          setProbCasa(Number(parsedData.probCasa))
+          setProbVisita(Number(parsedData.probVisita))
+          setMaxJuegos(Number(parsedData.maxJuegos))
+          setFormato(parsedData.formato)
+          setResultado(null)
+          setError(null)
+        } else {
+          setResultado(null)
+          setError("Formato inválido: JSON no cumple el formato de entrada requerido")
+        }
       }
       reader.readAsText(file)
 
