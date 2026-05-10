@@ -1,0 +1,15 @@
+{
+  "anos": 25,
+  "precio": 15000,
+  "vidaUtil": 8,
+  "datos": [
+    { "ano": 1, "mantenimiento": 400,  "precioVenta": 12000 },
+    { "ano": 2, "mantenimiento": 750,  "precioVenta": 9500  },
+    { "ano": 3, "mantenimiento": 1100, "precioVenta": 7800  },
+    { "ano": 4, "mantenimiento": 1500, "precioVenta": 6200  },
+    { "ano": 5, "mantenimiento": 2000, "precioVenta": 4800  },
+    { "ano": 6, "mantenimiento": 2600, "precioVenta": 3500  },
+    { "ano": 7, "mantenimiento": 3300, "precioVenta": 2200  },
+    { "ano": 8, "mantenimiento": 4200, "precioVenta": 1000  }
+  ]
+}

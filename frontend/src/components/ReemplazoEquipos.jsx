@@ -1,306 +1,633 @@
+/**
+ * ReemplazoEquipos.jsx
+ *
+ * Resuelve el problema de reemplazo de equipos usando programacion dinamica.
+ *
+ * El usuario da el costo inicial del equipo, el plazo del proyecto (1 a 30),
+ * la vida util del equipo (1 a 10), y por cada anno de uso el precio de reventa
+ * y el costo de mantenimiento.
+ *
+ * El algoritmo calcula:
+ *   T_k = costo neto de tener el equipo exactamente k annos
+ *       = precio_compra + sum(mantenimientos 1..k) - precio_venta_k
+ *
+ * Luego resuelve con DP:
+ *   G(t) = min sobre k=1..vidaUtil de { T_k + G(t+k) }
+ *   G(n) = 0  (al final del proyecto no hay mas costos)
+ *
+ * Estructura del archivo:
+ *   1. calcularTi()       - calcula los costos netos T_k
+ *   2. calcularDP()       - resuelve G(t) y reconstruye el plan optimo
+ *   3. ReemplazoEquipos() - componente React con UI, estado y handlers
+ */
+ 
 import { useState } from "react"
-
-const S = {
-  root: { fontFamily: "'DM Mono', monospace", padding: "2rem", maxWidth: 860, margin: "0 auto" },
-  h1: { fontSize: 20, fontWeight: 600, letterSpacing: "-0.03em", marginBottom: 4, color: "#0f0f0f" },
-  sub: { fontSize: 13, color: "#888", marginBottom: 28 },
-  label: { fontSize: 12, color: "#666", display: "block", marginBottom: 4, fontWeight: 500 },
-  input: {
-    width: "100%", padding: "7px 10px", fontSize: 13, border: "1px solid #e0e0e0",
-    borderRadius: 6, background: "#fafafa", color: "#111", outline: "none",
-    fontFamily: "'DM Mono', monospace", boxSizing: "border-box"
-  },
-  grid3: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 20 },
-  btn: {
-    padding: "9px 22px", fontSize: 13, fontWeight: 600, borderRadius: 6,
-    border: "none", cursor: "pointer", fontFamily: "'DM Mono', monospace"
-  },
-  btnP: { background: "#111", color: "#fff" },
-  btnS: { background: "#f0f0f0", color: "#333", marginLeft: 10 },
-  table: { width: "100%", borderCollapse: "collapse", fontSize: 12 },
-  th: { padding: "8px 10px", background: "#f5f5f5", borderBottom: "1px solid #e0e0e0", textAlign: "left", fontWeight: 600, color: "#444" },
-  td: { padding: "7px 10px", borderBottom: "1px solid #f0f0f0", color: "#333" },
-  tdG: { padding: "7px 10px", borderBottom: "1px solid #f0f0f0", color: "#16a34a", fontWeight: 700, background: "rgba(22,163,74,0.05)" },
-  metric: { background: "#f9f9f9", border: "1px solid #ebebeb", borderRadius: 8, padding: "14px 16px" },
-  metricVal: { fontSize: 22, fontWeight: 700, color: "#111", marginBottom: 2 },
-  metricLbl: { fontSize: 11, color: "#999", textTransform: "uppercase", letterSpacing: "0.05em" },
-  divider: { border: "none", borderTop: "1px solid #ebebeb", margin: "24px 0" },
-  secTitle: { fontSize: 11, fontWeight: 600, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 12 },
-}
-
+import "./Estilos.css"
+ 
+// Estilos para las etiquetas de decision en la tabla G(t)
+// Recibe "COMPRAR" o "ESPERAR" y devuelve el objeto de estilos inline
 const pillStyle = (type) => {
   const map = {
-    MANTENER:    { bg: "#dcfce7", color: "#15803d" },
-    REEMPLAZAR:  { bg: "#fee2e2", color: "#b91c1c" },
-    OBLIGATORIO: { bg: "#fef3c7", color: "#92400e" },
+    COMPRAR: { background: "#1f0a0a", color: "#f87171", border: "1px solid #7f1d1d" },
+    ESPERAR: { background: "#0a1f0e", color: "#4ade80", border: "1px solid #166534" },
   }
-  const { bg, color } = map[type] || map.MANTENER
-  return { display: "inline-block", padding: "2px 10px", borderRadius: 99, fontSize: 11, fontWeight: 600, background: bg, color }
+  const s = map[type] || map.ESPERAR
+  return {
+    ...s,
+    display: "inline-block", padding: "2px 10px",
+    borderRadius: 99, fontSize: 11, fontWeight: 700,
+    fontFamily: "'Space Mono', monospace"
+  }
 }
-
-function calcularDP(datos, precio, vidaUtil) {
-  const n   = datos.length
-  const INF = 1e15
-  const dp  = Array.from({ length: n + 1 }, () => new Array(n + 2).fill(INF))
-  const dec = Array.from({ length: n },     () => new Array(n + 2).fill(""))
-
-  // Frontera: al final del horizonte recuperamos el valor residual de la bici que tengamos
-  for (let edad = 0; edad <= n + 1; edad++) {
-    const resid = datos[Math.min(edad - 1, n - 1)]?.valorResidual ?? 0
-    dp[n][edad] = -resid
+ 
+/**
+ * calcularTi - calcula el costo neto T_k de tener el equipo k annos
+ *
+ * Formula:
+ *   T_k = precio_compra + (mant_1 + mant_2 + ... + mant_k) - precio_venta_k
+ *
+ * @param {Array} datos  - array de { mantenimiento, precioVenta } por anno de vida
+ * @param {number} precio - precio de compra del equipo nuevo
+ * @returns {Array} Ti donde Ti[k-1] = costo neto de usar el equipo k annos
+ */
+function calcularTi(datos, precio) {
+  // Verificacion basica para evitar errores si llega algo raro
+  if (!datos || datos.length === 0 || isNaN(precio) || precio <= 0) return []
+ 
+  const Ti = []
+  let mantAcum = 0
+  for (const d of datos) {
+    const mant = isNaN(d.mantenimiento) ? 0 : d.mantenimiento
+    const venta = isNaN(d.precioVenta) ? 0 : d.precioVenta
+    mantAcum += mant
+    Ti.push(precio + mantAcum - venta)
   }
-
-  for (let t = n - 1; t >= 0; t--) {
-    for (let edad = 1; edad <= n; edad++) {
-      const obligado = vidaUtil > 0 && edad >= vidaUtil
-      const mant     = datos[t].mantenimiento
-      const resid    = datos[Math.min(edad - 1, n - 1)].valorResidual
-      const maintSig = t + 1 < n ? datos[t + 1].mantenimiento : 0
-
-      // Opcion MANTENER
-      if (!obligado && dp[t + 1][edad + 1] < INF) {
-        const c = mant + dp[t + 1][edad + 1]
-        if (c < dp[t][edad]) { dp[t][edad] = c; dec[t][edad] = "MANTENER" }
-      }
-
-      // Opcion REEMPLAZAR
-      const c = precio - resid + maintSig + dp[t + 1][1]
-      if (c < dp[t][edad]) {
-        dp[t][edad] = c
-        dec[t][edad] = obligado ? "OBLIGATORIO" : "REEMPLAZAR"
+  return Ti
+}
+ 
+/**
+ * calcularDP - resuelve el problema de reemplazo con programacion dinamica
+ *
+ * Estado: G(t) = costo minimo total desde el anno t hasta el final del proyecto
+ *
+ * Recurrencia:
+ *   G(t) = min_{k=1..vidaUtil} { T_k + G(t+k) }   para t < nPlan
+ *   G(nPlan) = 0
+ *
+ * Para reconstruir el plan guardo en rep[t] el anno donde conviene vender
+ * el equipo comprado en t, luego sigo la cadena 0 -> rep[0] -> rep[rep[0]]...
+ *
+ * @param {Array}  datos    - array de { anno, mantenimiento, precioVenta }
+ * @param {number} precio   - precio de compra
+ * @param {number} vidaUtil - maximo de annos que se puede usar el equipo (1-10)
+ * @param {number} nPlan    - horizonte de planificacion en annos (1-30)
+ * @returns {{ Ti, G, plan, costoTotal }}
+ */
+function calcularDP(datos, precio, vidaUtil, nPlan) {
+  // Si los datos estan vacios o son invalidos no hacemos nada
+  if (!datos || datos.length === 0) return null
+  if (isNaN(precio) || precio <= 0) return null
+  if (isNaN(vidaUtil) || vidaUtil < 1) return null
+  if (isNaN(nPlan) || nPlan < 1) return null
+ 
+  const Ti  = calcularTi(datos, precio)
+  if (!Ti || Ti.length === 0) return null
+ 
+  const INF = 1e15
+ 
+  // G[t] = costo minimo desde el anno t en adelante
+  const G   = new Array(nPlan + 1).fill(INF)
+  // rep[t] = en que anno se vende el equipo comprado en t
+  const rep = new Array(nPlan + 1).fill(-1)
+ 
+  // Condicion de frontera: al llegar al fin del proyecto el costo es 0
+  G[nPlan] = 0
+ 
+  // Lleno hacia atras desde t = nPlan-1 hasta t = 0
+  for (let t = nPlan - 1; t >= 0; t--) {
+    for (let k = 1; k <= vidaUtil; k++) {
+      if (t + k <= nPlan && k - 1 < Ti.length) {
+        const costo = Ti[k - 1] + G[t + k]
+        if (costo < G[t]) {
+          G[t]   = costo
+          rep[t] = t + k
+        }
       }
     }
   }
-
-  // Reconstruir plan optimo
+ 
+  // Si G[0] sigue siendo INF, algo salio mal (no hay solucion posible)
+  if (G[0] >= INF) return null
+ 
+  // Reconstruyo el plan optimo siguiendo los punteros rep[]
   const plan = []
-  let edadAct = 1
-  for (let t = 0; t < n; t++) {
-    const d     = dec[t][edadAct]
-    const resid = datos[Math.min(edadAct - 1, n - 1)].valorResidual
-    plan.push({ t, edad: edadAct, decision: d, mant: datos[t].mantenimiento, resid, dpVal: dp[t][edadAct] })
-    edadAct = d !== "MANTENER" ? 1 : edadAct + 1
+  let t = 0
+  let seguridad = 0  // contador para evitar bucle infinito por datos corruptos
+ 
+  while (t < nPlan && seguridad < nPlan + 5) {
+    seguridad++
+    const sig = rep[t]
+ 
+    // Si el puntero es invalido, algo fallo
+    if (sig === -1 || sig <= t || sig > nPlan) break
+ 
+    const k = sig - t
+    if (k < 1 || k - 1 >= Ti.length || k - 1 >= datos.length) break
+ 
+    plan.push({
+      compraEn:    t,
+      vendeEn:     sig,
+      anosUso:     k,
+      Ti:          Ti[k - 1],
+      precioVenta: datos[k - 1].precioVenta ?? 0,
+      Gt:          G[t]
+    })
+    t = sig
   }
-
-  const residFinal = datos[Math.min(edadAct - 1, n - 1)]?.valorResidual ?? 0
-  const compras    = plan.filter(p => p.decision !== "MANTENER").length
-  return { dp, plan, costoTotal: dp[0][1], compras, residFinal }
+ 
+  return { Ti, G, plan, costoTotal: G[0] }
 }
-
+ 
+// Limites segun la especificacion del proyecto
+const LIMITE_PLAN_MIN  = 1
+const LIMITE_PLAN_MAX  = 30
+const LIMITE_VIDA_MIN  = 1
+const LIMITE_VIDA_MAX  = 10
+ 
+/**
+ * ReemplazoEquipos - componente principal de la aplicacion
+ *
+ * Maneja el estado del formulario, la tabla de datos, la carga/guardado
+ * de archivos JSON y la llamada al algoritmo DP.
+ */
 export default function ReemplazoEquipos() {
-  const [años,      setAños]      = useState("")
-  const [vidaUtil,  setVidaUtil]  = useState("")
-  const [precio,    setPrecio]    = useState("")
-  const [datos,     setDatos]     = useState([])
-  const [resultado, setResultado] = useState(null)
-
+ 
+  // Estado de los campos del formulario
+  const [anos,      setAnos]      = useState("")   // horizonte de planificacion
+  const [vidaUtil,  setVidaUtil]  = useState("")   // vida util maxima del equipo
+  const [precio,    setPrecio]    = useState("")   // precio de compra del equipo
+  const [datos,     setDatos]     = useState([])   // tabla con mantenimiento y precio de venta
+  const [resultado, setResultado] = useState(null) // resultado del algoritmo DP
+  const [error,     setError]     = useState(null) // mensaje de error para mostrar al usuario
+ 
+  /**
+   * generarCampos - valida los inputs principales y genera la tabla editable
+   * Las filas de la tabla son iguales a la vida util ingresada
+   */
   const generarCampos = () => {
-    const n = parseInt(años)
-    if (!n || n < 1) return
-    const defMant = [80, 120, 180, 260, 360, 480, 630, 800, 1000, 1200]
-    const p       = parseFloat(precio) || 1000
-    setDatos(Array.from({ length: n }, (_, i) => ({
-      año: i + 1,
-      mantenimiento: defMant[i] ?? (i + 1) * 80,
-      valorResidual: Math.round(p * Math.pow(0.8, i + 1))
+    setError(null)
+ 
+    const n    = parseInt(anos)
+    const vida = parseInt(vidaUtil)
+    const p    = parseFloat(precio)
+ 
+    // Validaciones con los limites de la especificacion
+    if (isNaN(n) || n < LIMITE_PLAN_MIN || n > LIMITE_PLAN_MAX) {
+      setError(`El plazo del proyecto debe estar entre ${LIMITE_PLAN_MIN} y ${LIMITE_PLAN_MAX} annos.`)
+      return
+    }
+    if (isNaN(p) || p <= 0) {
+      setError("Ingresa un precio de compra valido (mayor a 0).")
+      return
+    }
+    if (isNaN(vida) || vida < LIMITE_VIDA_MIN || vida > LIMITE_VIDA_MAX) {
+      setError(`La vida util debe estar entre ${LIMITE_VIDA_MIN} y ${LIMITE_VIDA_MAX} annos.`)
+      return
+    }
+    if (vida > n) {
+      setError("La vida util no puede ser mayor que el plazo del proyecto.")
+      return
+    }
+ 
+    // Valores de mantenimiento por defecto (aumentan con los annos de uso)
+    const defMant = [305, 530, 800, 1100, 1400, 1700, 2100, 2500, 3000, 3600]
+ 
+    setDatos(Array.from({ length: vida }, (_, i) => ({
+      ano:           i + 1,
+      mantenimiento: defMant[i] ?? (i + 1) * 200,
+      // Precio de venta por defecto: depreciacion del 30% por anno
+      precioVenta:   Math.round(p * Math.pow(0.7, i + 1))
     })))
     setResultado(null)
   }
-
+ 
+  /**
+   * actualizarDato - actualiza un campo de una fila de la tabla sin mutar el estado
+   * Convierte el valor a numero y se asegura de que no sea negativo
+   */
   const actualizarDato = (i, campo, val) => {
-    const nuevos = [...datos]; nuevos[i][campo] = Number(val); setDatos(nuevos)
+    const num = parseFloat(val)
+    const nuevos = [...datos]
+    // Si el valor no es un numero valido lo dejamos en 0
+    nuevos[i] = { ...nuevos[i], [campo]: isNaN(num) ? 0 : Math.max(0, num) }
+    setDatos(nuevos)
   }
-
+ 
+  /**
+   * calcular - corre el algoritmo DP con los datos actuales
+   * Valida que haya datos y que los parametros sean correctos antes de calcular
+   */
   const calcular = () => {
-    if (!precio || datos.length === 0) return
-    setResultado(calcularDP(datos, parseFloat(precio), parseInt(vidaUtil) || 0))
+    setError(null)
+ 
+    if (datos.length === 0) {
+      setError("Primero genera los campos con los parametros del problema.")
+      return
+    }
+ 
+    const vida = parseInt(vidaUtil)
+    const n    = parseInt(anos)
+    const p    = parseFloat(precio)
+ 
+    if (isNaN(vida) || isNaN(n) || isNaN(p) || p <= 0) {
+      setError("Hay un problema con los parametros ingresados. Revisa los campos.")
+      return
+    }
+ 
+    // Verifico que ningun precio de venta sea negativo
+    const hayVentaNegativa = datos.some(d => d.precioVenta < 0)
+    if (hayVentaNegativa) {
+      setError("El precio de venta no puede ser negativo.")
+      return
+    }
+ 
+    const res = calcularDP(datos, p, vida, n)
+    if (!res) {
+      setError("No se pudo calcular el plan optimo. Revisa que los datos sean validos.")
+      return
+    }
+ 
+    setResultado(res)
   }
-
-  const decLabel = (d) => {
-    if (d === "MANTENER")    return <span style={pillStyle("MANTENER")}>MANTENER</span>
-    if (d === "OBLIGATORIO") return <span style={pillStyle("OBLIGATORIO")}>REEMPLAZAR *</span>
-    return                          <span style={pillStyle("REEMPLAZAR")}>REEMPLAZAR</span>
+ 
+  // Limpia la tabla y los resultados pero conserva los parametros generales
+  const reiniciar = () => {
+    setDatos([])
+    setResultado(null)
+    setError(null)
   }
-
-  const n = parseInt(años) || 0
-
+ 
+  /**
+   * guardarArchivo - exporta la configuracion actual como archivo JSON descargable
+   * Guarda: anos, precio, vidaUtil y la tabla de datos
+   */
+  const guardarArchivo = () => {
+    if (datos.length === 0) {
+      setError("No hay datos para guardar. Genera los campos primero.")
+      return
+    }
+ 
+    try {
+      const config = {
+        anos:     parseInt(anos)    || 0,
+        precio:   parseFloat(precio) || 0,
+        vidaUtil: parseInt(vidaUtil) || 0,
+        datos
+      }
+      const blob = new Blob([JSON.stringify(config, null, 2)], { type: "application/json" })
+      const url  = URL.createObjectURL(blob)
+      const a    = document.createElement("a")
+      a.href = url
+      a.download = "configReemplazo.json"
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      setError("No se pudo guardar el archivo. Intenta de nuevo.")
+    }
+  }
+ 
+  /**
+   * cargarArchivo - carga una configuracion desde un archivo JSON
+   * Valida que el JSON tenga los campos necesarios antes de actualizar el estado
+   */
+  const cargarArchivo = () => {
+    const upload = document.createElement("input")
+    upload.type   = "file"
+    upload.accept = "application/json"
+ 
+    upload.onchange = (e) => {
+      const archivo = e.target.files[0]
+      if (!archivo) return
+ 
+      const reader = new FileReader()
+      reader.onload = (ev) => {
+        try {
+          const config = JSON.parse(ev.target.result)
+ 
+          // Verifico que el JSON tenga los campos basicos
+          if (!config.anos || !config.precio || !Array.isArray(config.datos)) {
+            setError("El JSON no tiene el formato correcto. Necesita: anos, precio y datos.")
+            return
+          }
+ 
+          // Verifico que los valores esten dentro de los limites
+          const n    = parseInt(config.anos)
+          const vida = parseInt(config.vidaUtil)
+          const p    = parseFloat(config.precio)
+ 
+          if (isNaN(n) || n < LIMITE_PLAN_MIN || n > LIMITE_PLAN_MAX) {
+            setError(`El archivo tiene un plazo invalido. Debe ser entre ${LIMITE_PLAN_MIN} y ${LIMITE_PLAN_MAX}.`)
+            return
+          }
+          if (isNaN(vida) || vida < LIMITE_VIDA_MIN || vida > LIMITE_VIDA_MAX) {
+            setError(`El archivo tiene una vida util invalida. Debe ser entre ${LIMITE_VIDA_MIN} y ${LIMITE_VIDA_MAX}.`)
+            return
+          }
+          if (isNaN(p) || p <= 0) {
+            setError("El archivo tiene un precio de compra invalido.")
+            return
+          }
+          if (config.datos.length === 0) {
+            setError("El archivo no contiene datos de mantenimiento y precio de venta.")
+            return
+          }
+ 
+          setError(null)
+          setAnos(String(config.anos))
+          setPrecio(String(config.precio))
+          setVidaUtil(String(config.vidaUtil ?? 0))
+          setDatos(config.datos)
+          setResultado(null)
+        } catch {
+          setError("No se pudo leer el archivo. Verifica que sea un JSON valido.")
+        }
+      }
+      reader.readAsText(archivo)
+    }
+    upload.click()
+  }
+ 
+  const n    = parseInt(anos)    || 0
+  const vida = parseInt(vidaUtil) || 0
+ 
+  // Ejemplo de como debe verse el archivo JSON para que el usuario lo entienda
+  const jsonEjemplo = `{
+  "anos": 8,
+  "precio": 9999,
+  "vidaUtil": 4,
+  "datos": [
+    { "ano": 1, "mantenimiento": 305,  "precioVenta": 7125 },
+    { "ano": 2, "mantenimiento": 530,  "precioVenta": 5000 },
+    { "ano": 3, "mantenimiento": 800,  "precioVenta": 3700 },
+    { "ano": 4, "mantenimiento": 1100, "precioVenta": 3310 }
+  ]
+}`
+ 
   return (
-    <div style={S.root}>
-      <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-
-      <h1 style={S.h1}>Reemplazo de Equipos</h1>
-      <p style={S.sub}>Bicicleta repartidor · Programación dinámica</p>
-
-      {/* Parametros */}
-      <div style={S.grid3}>
-        <div>
-          <label style={S.label}>Años de planificación</label>
-          <input style={S.input} type="number" min="1" max="10" value={años}
-            onChange={e => { setAños(e.target.value); setDatos([]); setResultado(null) }} />
-        </div>
-        <div>
-          <label style={S.label}>Precio de compra ($)</label>
-          <input style={S.input} type="number" min="0" value={precio}
-            onChange={e => setPrecio(e.target.value)} />
-        </div>
-        <div>
-          <label style={S.label}>Vida útil máx. (años, 0 = sin límite)</label>
-          <input style={S.input} type="number" min="0" value={vidaUtil} placeholder="0"
-            onChange={e => setVidaUtil(e.target.value)} />
-        </div>
+    <div className="mm-wrap">
+      <h1 className="mm-title">Reemplazo de Equipos</h1>
+      <p className="mm-subtitle">EQUIPMENT REPLACEMENT — PROGRAMACION DINAMICA</p>
+ 
+      {/* Seccion explicativa del algoritmo y formato del JSON */}
+      <div className="mm-format-box">
+        <p className="mm-format-title">Como funciona?</p>
+        <p className="mm-format-text">
+          Ingresa por cada anno de vida del equipo el <code>costo de mantenimiento</code> y
+          el <code>precio de reventa</code> si lo vendieras al final de ese anno.<br />
+          El algoritmo calcula el costo neto <code>T_k</code> de cada periodo
+          y encuentra el plan de reemplazos que minimiza el gasto total.<br /><br />
+          <code>T_k = precio_compra + mantenimientos(1..k) - precio_venta_k</code><br /><br />
+          Puedes <code>cargar</code> o <code>guardar</code> la configuracion en JSON:
+        </p>
+        <pre style={{
+          fontFamily: "'Space Mono', monospace", fontSize: "0.72rem", color: "#6b7280",
+          background: "#0a0914", border: "1px solid #1e1b4b", borderRadius: 6,
+          padding: "0.75rem", marginTop: "0.75rem", overflowX: "auto", lineHeight: 1.7
+        }}>{jsonEjemplo}</pre>
       </div>
-      <button style={{ ...S.btn, ...S.btnP }} onClick={generarCampos}>Generar campos →</button>
-
-      {/* Tabla de datos */}
-      {datos.length > 0 && <>
-        <hr style={S.divider} />
-        <p style={S.secTitle}>Datos por año de vida</p>
-        <p style={{ fontSize: 12, color: "#777", marginBottom: 12 }}>
-          El valor residual es lo que obtenés si vendés la bici al final de ese año de uso.
-        </p>
-        <div style={{ overflowX: "auto", marginBottom: 16 }}>
-          <table style={S.table}>
-            <thead>
-              <tr>
-                <th style={S.th}>Año de vida</th>
-                <th style={S.th}>Mantenimiento ($)</th>
-                <th style={S.th}>Valor residual ($)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {datos.map((d, i) => (
-                <tr key={i}>
-                  <td style={{ ...S.td, color: "#bbb", fontWeight: 600 }}>Año {d.año}</td>
-                  <td style={S.td}>
-                    <input style={{ ...S.input, width: 110 }} type="number" value={d.mantenimiento}
-                      onChange={e => actualizarDato(i, "mantenimiento", e.target.value)} />
-                  </td>
-                  <td style={S.td}>
-                    <input style={{ ...S.input, width: 110 }} type="number" value={d.valorResidual}
-                      onChange={e => actualizarDato(i, "valorResidual", e.target.value)} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <button style={{ ...S.btn, ...S.btnP }} onClick={calcular}>Calcular óptimo ↗</button>
-        <button style={{ ...S.btn, ...S.btnS }} onClick={() => { setDatos([]); setResultado(null) }}>Reiniciar</button>
-      </>}
-
-      {/* Resultados */}
-      {resultado && <>
-        <hr style={S.divider} />
-
-        {/* Metricas */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
-          {[
-            ["$" + Math.round(resultado.costoTotal).toLocaleString(), "Costo neto total"],
-            [resultado.compras + 1,                                   "Bicicletas compradas"],
-            ["$" + Math.round(resultado.residFinal).toLocaleString(), "Valor residual final"],
-          ].map(([v, l]) => (
-            <div key={l} style={S.metric}>
-              <div style={S.metricVal}>{v}</div>
-              <div style={S.metricLbl}>{l}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Timeline visual */}
-        <p style={S.secTitle}>Plan óptimo de reemplazo</p>
-        <div style={{ display: "flex", gap: 6, marginBottom: 24, alignItems: "stretch", flexWrap: "wrap" }}>
-          {resultado.plan.map((row, i) => {
-            const isReplace = row.decision !== "MANTENER"
-            const isObl     = row.decision === "OBLIGATORIO"
-            const bg        = isObl ? "#fefce8" : isReplace ? "#fef2f2" : "#f0fdf4"
-            const border    = isObl ? "#fde047" : isReplace ? "#fca5a5" : "#86efac"
-            const textC     = isObl ? "#713f12" : isReplace ? "#991b1b" : "#166534"
-            return (
-              <div key={i} style={{
-                flex: "1 1 0", minWidth: 64, borderRadius: 8,
-                border: `1.5px solid ${border}`, background: bg,
-                padding: "10px 6px", textAlign: "center"
-              }}>
-                <div style={{ fontSize: 10, color: "#bbb", marginBottom: 4 }}>Año {row.t + 1}</div>
-                <div style={{ fontSize: 20, marginBottom: 4 }}>{isReplace ? "🔄" : "✓"}</div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: textC, lineHeight: 1.3 }}>
-                  {isObl ? "REEMPLAZAR*" : row.decision}
-                </div>
-                <div style={{ fontSize: 10, color: "#999", marginTop: 4 }}>
-                  {isReplace ? `Vende $${row.resid}` : `Mant. $${row.mant}`}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Tabla detalle */}
-        <p style={S.secTitle}>Detalle del plan</p>
-        <div style={{ overflowX: "auto", marginBottom: 24 }}>
-          <table style={S.table}>
-            <thead>
-              <tr>
-                <th style={S.th}>Año</th>
-                <th style={S.th}>Edad bici</th>
-                <th style={S.th}>Mant. ($)</th>
-                <th style={S.th}>Val. residual ($)</th>
-                <th style={S.th}>dp[t][edad] ($)</th>
-                <th style={S.th}>Decisión</th>
-              </tr>
-            </thead>
-            <tbody>
-              {resultado.plan.map((row, i) => (
-                <tr key={i}>
-                  <td style={S.td}>t={row.t + 1}</td>
-                  <td style={S.td}>{row.edad}</td>
-                  <td style={S.td}>${row.mant}</td>
-                  <td style={S.td}>${row.resid}</td>
-                  <td style={{ ...S.td, fontWeight: 600 }}>${Math.round(row.dpVal).toLocaleString()}</td>
-                  <td style={S.td}>{decLabel(row.decision)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Tabla DP completa */}
-        <p style={S.secTitle}>Tabla dp[t][edad] — todos los estados</p>
-        <p style={{ fontSize: 11, color: "#ccc", marginBottom: 10 }}>
-          Verde = camino óptimo · "—" = estado inalcanzable
-        </p>
-        <div style={{ overflowX: "auto" }}>
-          <table style={S.table}>
-            <thead>
-              <tr>
-                <th style={S.th}>Año \ Edad</th>
-                {Array.from({ length: n + 1 }, (_, e) => (
-                  <th key={e} style={S.th}>Edad {e}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {Array.from({ length: n + 1 }, (_, t) => (
-                <tr key={t}>
-                  <td style={{ ...S.td, fontWeight: 600, color: "#bbb" }}>t={t}</td>
-                  {Array.from({ length: n + 1 }, (_, edad) => {
-                    const val   = resultado.dp[t]?.[edad]
-                    const isInf = val === undefined || Math.abs(val) >= 1e14
-                    const isOpt = t < n && resultado.plan[t]?.edad === edad
+ 
+      {/* Botones para cargar y guardar archivos JSON */}
+      <div className="mm-input-row" style={{ marginBottom: "1rem" }}>
+        <button className="mm-btn" onClick={cargarArchivo}>Cargar JSON</button>
+        {datos.length > 0 && (
+          <button className="mm-btn" style={{ background: "#1e3a5f" }} onClick={guardarArchivo}>Guardar JSON</button>
+        )}
+      </div>
+ 
+      {/* Campos principales del problema */}
+      <div className="mm-input-row" style={{ flexWrap: "wrap", gap: "0.75rem" }}>
+        <input className="mm-input" type="number"
+          min={LIMITE_PLAN_MIN} max={LIMITE_PLAN_MAX}
+          placeholder={`Plazo del proyecto (${LIMITE_PLAN_MIN}-${LIMITE_PLAN_MAX} annos)`}
+          value={anos}
+          onChange={e => { setAnos(e.target.value); setDatos([]); setResultado(null) }} />
+        <input className="mm-input" type="number" min="0"
+          placeholder="Costo inicial del equipo ($)"
+          value={precio}
+          onChange={e => setPrecio(e.target.value)} />
+        <input className="mm-input" type="number"
+          min={LIMITE_VIDA_MIN} max={LIMITE_VIDA_MAX}
+          placeholder={`Vida util (${LIMITE_VIDA_MIN}-${LIMITE_VIDA_MAX} annos)`}
+          value={vidaUtil}
+          onChange={e => setVidaUtil(e.target.value)} />
+        <button className="mm-btn" onClick={generarCampos}>Generar campos</button>
+      </div>
+ 
+      {/* Mensaje de error visible al usuario */}
+      {error && <div className="mm-error">{error}</div>}
+ 
+      {/* Tabla editable con los datos por anno de vida del equipo */}
+      {datos.length > 0 && (
+        <div className="mm-results">
+          <div className="mm-card">
+            <p className="mm-card-title">Datos por anno de vida del equipo</p>
+            <p className="mm-format-text" style={{ marginBottom: "1rem" }}>
+              <code>Precio de reventa</code>: lo que obtienes si vendes el equipo al final de ese anno de uso.
+              El T_k se calcula automaticamente.
+            </p>
+            <div className="mm-table-container">
+              <table className="mm-matrix">
+                <thead>
+                  <tr>
+                    <th>anno de vida</th>
+                    <th>Mantenimiento ($)</th>
+                    <th>Precio de reventa ($)</th>
+                    {/* T_k se recalcula en tiempo real mientras el usuario edita */}
+                    <th>T_k calculado ($)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {datos.map((d, i) => {
+                    // Calculo T_k en tiempo real para que el usuario vea el impacto de sus cambios
+                    let mantAcum = 0
+                    for (let j = 0; j <= i; j++) {
+                      mantAcum += isNaN(datos[j].mantenimiento) ? 0 : datos[j].mantenimiento
+                    }
+                    const p  = parseFloat(precio)
+                    const pv = isNaN(d.precioVenta) ? 0 : d.precioVenta
+                    const Tk = isNaN(p) ? 0 : (p + mantAcum - pv)
+ 
                     return (
-                      <td key={edad} style={isOpt ? S.tdG : S.td}>
-                        {isInf ? "—" : `$${Math.round(val).toLocaleString()}`}
-                      </td>
+                      <tr key={i}>
+                        <th style={{ color: "#4b4888" }}>anno {d.ano}</th>
+                        <td>
+                          <input className="mm-input"
+                            style={{ padding: "4px 8px", fontSize: "0.78rem", width: 110 }}
+                            type="number" min="0"
+                            value={d.mantenimiento}
+                            onChange={e => actualizarDato(i, "mantenimiento", e.target.value)} />
+                        </td>
+                        <td>
+                          <input className="mm-input"
+                            style={{ padding: "4px 8px", fontSize: "0.78rem", width: 110 }}
+                            type="number" min="0"
+                            value={d.precioVenta}
+                            onChange={e => actualizarDato(i, "precioVenta", e.target.value)} />
+                        </td>
+                        <td className="highlight">${Math.round(Tk).toLocaleString()}</td>
+                      </tr>
                     )
                   })}
-                </tr>
+                </tbody>
+              </table>
+            </div>
+ 
+            {/* Botones de accion de la tabla */}
+            <div style={{ display: "flex", gap: "0.75rem", marginTop: "1.25rem" }}>
+              <button className="mm-btn" onClick={calcular}>Calcular optimo</button>
+              <button className="mm-btn" style={{ background: "#1e1b4b" }} onClick={reiniciar}>Reiniciar</button>
+              <button className="mm-btn" style={{ background: "#1e3a5f" }} onClick={guardarArchivo}>Guardar JSON</button>
+            </div>
+          </div>
+ 
+          {/* Seccion de resultados, solo aparece despues de calcular */}
+          {resultado && <>
+ 
+            {/* Tarjetas con el resumen del resultado */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "1rem" }}>
+              {[
+                ["$" + Math.round(resultado.costoTotal).toLocaleString(), "Costo total minimo"],
+                [resultado.plan.length,                                   "Equipos comprados"],
+                [resultado.plan.map(p => `${p.compraEn}->${p.vendeEn}`).join("  "), "Plan de annos"],
+              ].map(([v, l]) => (
+                <div key={l} className="mm-card" style={{ textAlign: "center" }}>
+                  <p className="mm-card-title">{l}</p>
+                  <span className="mm-orden" style={{ fontSize: String(v).length > 8 ? "1rem" : "1.4rem" }}>{v}</span>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+ 
+            {/* Timeline visual: cada bloque es un equipo con sus datos de uso */}
+            <div className="mm-card">
+              <p className="mm-card-title">Plan optimo de reemplazo</p>
+              <p className="mm-format-text" style={{ marginBottom: "1rem" }}>
+                Cada bloque representa un equipo: cuando se compra, cuantos annos se usa y cuando se vende.
+              </p>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {resultado.plan.map((p, i) => (
+                  <div key={i} style={{
+                    flex: "1 1 0", minWidth: 120,
+                    borderRadius: 8, border: "1px solid #7f1d1d",
+                    background: "#1f0a0a", padding: "12px 10px", textAlign: "center"
+                  }}>
+                    <div style={{ fontSize: 10, color: "#4b4888", marginBottom: 4, fontFamily: "'Space Mono', monospace" }}>
+                      Equipo #{i + 1}
+                    </div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#f87171", fontFamily: "'Space Mono', monospace" }}>
+                      anno {p.compraEn} a anno {p.vendeEn}
+                    </div>
+                    <div style={{ fontSize: 10, color: "#6b7280", marginTop: 4, fontFamily: "'Space Mono', monospace" }}>
+                      {p.anosUso} anno{p.anosUso > 1 ? "s" : ""} de uso
+                    </div>
+                    <div style={{ fontSize: 10, color: "#4ade80", marginTop: 2, fontFamily: "'Space Mono', monospace" }}>
+                      T_{p.anosUso} = ${Math.round(p.Ti).toLocaleString()}
+                    </div>
+                    <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 2, fontFamily: "'Space Mono', monospace" }}>
+                      Vende en ${(p.precioVenta ?? 0).toLocaleString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+ 
+            {/* Tabla con los costos netos T_k para cada periodo de uso */}
+            <div className="mm-card">
+              <p className="mm-card-title">Costos netos T_k por periodo de uso</p>
+              <p className="mm-format-text" style={{ marginBottom: "0.75rem" }}>
+                <code>T_k = precio_compra + mantenimientos(1..k) - precio_venta_k</code>
+              </p>
+              <div className="mm-table-container">
+                <table className="mm-matrix">
+                  <thead>
+                    <tr>
+                      <th>k (annos de uso)</th>
+                      <th>Mant. acumulado ($)</th>
+                      <th>Precio de reventa ($)</th>
+                      <th>T_k ($)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {resultado.Ti.map((tk, i) => {
+                      let mantAcum = 0
+                      for (let j = 0; j <= i; j++) {
+                        mantAcum += isNaN(datos[j]?.mantenimiento) ? 0 : datos[j].mantenimiento
+                      }
+                      const pv = isNaN(datos[i]?.precioVenta) ? 0 : datos[i].precioVenta
+                      return (
+                        <tr key={i}>
+                          <td>{i + 1} anno{i > 0 ? "s" : ""}</td>
+                          <td>${mantAcum.toLocaleString()}</td>
+                          <td>${pv.toLocaleString()}</td>
+                          <td className="highlight">${Math.round(tk).toLocaleString()}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+ 
+            {/* Tabla completa de G(t) para todos los annos del proyecto */}
+            <div className="mm-card">
+              <p className="mm-card-title">Tabla G(t) — costo minimo desde cada anno</p>
+              <p className="mm-format-text" style={{ marginBottom: "0.75rem" }}>
+                <code>G(t)</code> = costo minimo total desde el anno t hasta el anno {n}.
+                Los annos resaltados son donde se compra un equipo nuevo.
+              </p>
+              <div className="mm-table-container">
+                <table className="mm-matrix">
+                  <thead>
+                    <tr>
+                      <th>anno t</th>
+                      <th>G(t) ($)</th>
+                      <th>Accion</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Array.from({ length: n + 1 }, (_, t) => {
+                      // Reviso si en este anno se compra un equipo segun el plan optimo
+                      const compraAqui = resultado.plan.find(p => p.compraEn === t)
+                      const esOptimo   = compraAqui !== undefined
+ 
+                      return (
+                        <tr key={t}>
+                          <td className={esOptimo ? "highlight" : ""}>t = {t}</td>
+                          <td className={esOptimo ? "highlight" : ""}>
+                            ${Math.round(resultado.G[t] ?? 0).toLocaleString()}
+                          </td>
+                          <td style={{ textAlign: "left" }}>
+                            {t === n
+                              ? <span style={pillStyle("ESPERAR")}>FIN</span>
+                              : esOptimo
+                                ? <span style={pillStyle("COMPRAR")}>
+                                    COMPRAR - usar {compraAqui.anosUso} anno{compraAqui.anosUso > 1 ? "s" : ""}
+                                  </span>
+                                : <span style={{ ...pillStyle("ESPERAR"), color: "#6b7280", background: "#111", border: "1px solid #222" }}>
+                                    -
+                                  </span>
+                            }
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+ 
+          </>}
         </div>
-        <p style={{ fontSize: 11, color: "#ddd", marginTop: 10 }}>
-          * REEMPLAZAR (obligatorio) = bici alcanzó la vida útil máxima.
-        </p>
-      </>}
+      )}
     </div>
   )
 }

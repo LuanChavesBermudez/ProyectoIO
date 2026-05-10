@@ -1,0 +1,11 @@
+{
+  "anos": 8,
+  "precio": 9999,
+  "vidaUtil": 4,
+  "datos": [
+    { "ano": 1, "mantenimiento": 305,  "precioVenta": 7125 },
+    { "ano": 2, "mantenimiento": 530,  "precioVenta": 5000 },
+    { "ano": 3, "mantenimiento": 800,  "precioVenta": 3700 },
+    { "ano": 4, "mantenimiento": 1100, "precioVenta": 3310 }
+  ]
+}
