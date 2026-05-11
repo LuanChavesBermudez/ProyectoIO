@@ -28,12 +28,14 @@ function ArbolesB() {
     for (let i = 0; i < listaLlaves.length; i++) {
       const nuevaLlave = listaLlaves[i].trim();
       const pesoString = listaPesos[i].trim();
+      
       // Valida que no haya valores vacíos
       if (nuevaLlave === "" || pesoString === "") {
         setAdvertencia("Debe ingresar datos validos en los campos de llaves y pesos.")
         return null;
       }
 
+      // Valida que no hayan llaves duplicadas
       for (const par of pares) {
         if (par.llave === nuevaLlave){
           setAdvertencia("Las llaves no pueden ser duplicadas.")
@@ -78,7 +80,7 @@ function ArbolesB() {
     return pares;
   };
 
-  // Crea matriz de tamaño n dinamicamente
+  // Crea matriz de tamaño n dinamicamente, inicializada en ceros
   const crearMatriz = (len) => {
     const matriz = [];
     for (let i = 0; i < len; i++) {
@@ -114,8 +116,8 @@ function ArbolesB() {
         let costoMin = Infinity;
 
         for (let k = i; k <= j; k++) {                            //Calcula todos los k desde k = i a k = j
-          const formulaIzq = (k === i) ? 0 : A[i][k - 1];       //Validacion para indice columna fuera de la matriz
-          const formulaDer = (k === j) ? 0 : A[k + 1][j];    //Validacion para indice fila fuera de la matriz
+          const formulaIzq = (k === i) ? 0 : A[i][k - 1];         //Validacion para indice columna fuera de la matriz
+          const formulaDer = (k === j) ? 0 : A[k + 1][j];         //Validacion para indice fila fuera de la matriz
 
           let totalFrecuencias = memoFrecuencias[i][j];           //Busca suma de frecuencias precalculada
           if (totalFrecuencias == 0) {                            //Si no se ha calculado, lo calcula y lo guarda
