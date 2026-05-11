@@ -26,14 +26,23 @@ function ArbolesB() {
 
     // Para cada llave ingresada
     for (let i = 0; i < listaLlaves.length; i++) {
+      const nuevaLlave = listaLlaves[i].trim();
+      const pesoString = listaPesos[i].trim();
       // Valida que no haya valores vacíos
-      if (listaLlaves[i] === "" || listaPesos[i] === "") {
+      if (nuevaLlave === "" || pesoString === "") {
         setAdvertencia("Debe ingresar datos validos en los campos de llaves y pesos.")
         return null;
       }
 
+      for (const par of pares) {
+        if (par.llave === nuevaLlave){
+          setAdvertencia("Las llaves no pueden ser duplicadas.")
+          return null;
+        }
+      }
+
       // Convierte el peso ingresado a un valor real
-      const pesoNum = Number(listaPesos[i].trim());
+      const pesoNum = Number(pesoString);
 
       // Valida que sea un numero valido mayor a 0
       if (isNaN(pesoNum) || pesoNum <= 0) {
@@ -46,7 +55,7 @@ function ArbolesB() {
 
       // Crea par ordenado llave:peso
       pares.push({
-        llave: listaLlaves[i].trim(),
+        llave: nuevaLlave,
         peso: pesoNum
       });
 
@@ -105,8 +114,8 @@ function ArbolesB() {
         let costoMin = Infinity;
 
         for (let k = i; k <= j; k++) {                            //Calcula todos los k desde k = i a k = j
-          const formulaIzq = (k - 1 < 0) ? 0 : A[i][k - 1];       //Validacion para indice columna fuera de la matriz
-          const formulaDer = (k + 1 >= len) ? 0 : A[k + 1][j];    //Validacion para indice fila fuera de la matriz
+          const formulaIzq = (k === i) ? 0 : A[i][k - 1];       //Validacion para indice columna fuera de la matriz
+          const formulaDer = (k === j) ? 0 : A[k + 1][j];    //Validacion para indice fila fuera de la matriz
 
           let totalFrecuencias = memoFrecuencias[i][j];           //Busca suma de frecuencias precalculada
           if (totalFrecuencias == 0) {                            //Si no se ha calculado, lo calcula y lo guarda
@@ -194,17 +203,25 @@ function ArbolesB() {
       // Define como se van a procesar los datos
       reader.onload = (e) => {
         // Lo carga como JSON
-        const datos = JSON.parse(e.target.result);
+        try {
+          const datos = JSON.parse(e.target.result);
 
-        // Si no tiene formato correcto, retorna
-        if (!("llaves" in datos) || !("pesos") in datos) {
+          // Si no tiene formato correcto, retorna error
+          if (!("llaves" in datos) ||
+            !("pesos" in datos) ||
+            typeof datos.llaves !== "string" ||
+            typeof datos.pesos !== "string"){
+            setAdvertencia("El archivo seleccionado es invalido.");
+            return;
+          }
+
+          // Carga los strings a los campos de input
+          setLlaves(datos.llaves);
+          setPesos(datos.pesos);
+        } catch {
           setAdvertencia("El archivo seleccionado es invalido.");
           return;
         }
-
-        // Carga los strings a los campos de input
-        setLlaves(datos.llaves);
-        setPesos(datos.pesos);
       };
       // Procesa los datos
       reader.readAsText(archivo);
@@ -229,7 +246,7 @@ function ArbolesB() {
     asignarFrecuencias(pares, pesoTotal);
 
     // ordena los pares lexicograficamente
-    const paresOrdenados = [...pares].sort((a, b) => a.llave.localeCompare(b.llave));
+    const paresOrdenados = [...pares].sort((a, b) => a.llave.localeCompare(b.llave, "es"));
 
     // Calcula tablas A y R
     const tablas = abbOptimos(paresOrdenados);
@@ -259,7 +276,8 @@ function ArbolesB() {
         <p className="mm-format-title">Formato de entrada</p>
         <p className="mm-format-text">
           Inserte los datos separados por comas.<br />
-          Las cantidad de llaves debe coincidir con la cantidad de pesos.<br />
+          Las cantidad de llaves debe coincidir con la cantidad de pesos, no pueden ser vacías ni duplicadas.<br />
+          Los pesos deben ser números mayores a 0.<br />
         </p>
       </div>
 
